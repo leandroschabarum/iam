@@ -1,4 +1,4 @@
-# @lndr/iam
+# iam
 Identity and access management abstraction for applications.
 ----
 
