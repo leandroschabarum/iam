@@ -1,6 +1,8 @@
 import {
+	AuthOptions,
 	Configurations,
 	IAM,
+	JWTDecoded,
 	NextFunction,
 	Request,
 	RequestHandler,
@@ -28,7 +30,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 		return token;
 	}
 
-	protected validateAuthorizedParty(decoded: Record<string, unknown>) {
+	protected validateAuthorizedParty(decoded: JWTDecoded) {
 		const { aud, azp } = decoded || {};
 
 		if (Array.isArray(aud)) {
@@ -50,6 +52,22 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 		}
 	}
 
+	protected role(specs: string[], decoded: JWTDecoded): boolean {
+		const roles = decoded.realm_access?.roles || [];
+
+		return specs.some((it) => roles.includes(it));
+	}
+
+	protected resource(specs: string[], decoded: JWTDecoded): boolean {
+		const audience =
+			(!Array.isArray(decoded.aud) && decoded.aud) ||
+			decoded.azp ||
+			this.config.clientId;
+		const resources = decoded.resource_access?.[audience]?.roles || [];
+
+		return specs.some((it) => resources.includes(it));
+	}
+
 	public initialize<T = Array<RequestHandler>>(
 		options?: RemoteJWKSetOptions
 	) {
@@ -62,10 +80,17 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 		return [] as T;
 	}
 
-	public auth(): RequestHandler {
+	public auth(options?: AuthOptions): RequestHandler {
+		const { level, permissions } = options || {};
+
+		const specs = (Array.isArray(permissions) ? permissions : []).filter(
+			Boolean
+		);
+		const validator = (level && this[level]?.bind(this)) || (() => true);
+
 		return async (req: Request, res: Response, next: NextFunction) => {
 			try {
-				const { payload } = await jwtVerify(
+				const { payload } = await jwtVerify<JWTDecoded>(
 					this.getAuthorization(req),
 					this.jwks,
 					{ issuer: this.issuer }
@@ -73,13 +98,19 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 
 				this.validateAuthorizedParty(payload);
 
+				if (!validator?.(specs, payload)) {
+					res.writeHead(403).end(
+						`Forbidden: missing ${level} permission`
+					);
+				}
+
 				Object.assign(req, { user: payload });
 
-				return next?.();
+				next?.();
 			} catch (e) {
 				const message = e instanceof Error ? e.message : String(e);
 
-				return res.writeHead(401).end(message);
+				res.writeHead(401).end(message);
 			}
 		};
 	}

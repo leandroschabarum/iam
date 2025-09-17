@@ -1,6 +1,7 @@
 import { Strategy } from '../../shared';
-import { type IncomingMessage, type ServerResponse } from 'http';
+import { JWTPayload } from 'jose';
 import { type KeycloakOptions } from 'keycloak-connect';
+import { type IncomingMessage, type ServerResponse } from 'http';
 
 export { IAM, Strategy } from '../../shared';
 
@@ -15,6 +16,19 @@ export type RequestHandler = (
 	res: Response,
 	next: NextFunction
 ) => void | Promise<void>;
+
+export interface JWTDecoded extends JWTPayload {
+	azp?: string;
+	realm_access?: { roles: string[] };
+	resource_access?: { [clientId: string]: { roles: string[] } };
+}
+
+export enum AuthLevel {
+	ROLE = 'role',
+	RESOURCE = 'resource'
+}
+
+export type AuthOptions = { level: AuthLevel; permissions: string[] };
 
 export type Configurations =
 	| { strategy: Strategy.SESSION; config: SessionConfig }
