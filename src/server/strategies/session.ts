@@ -12,16 +12,16 @@ import Keycloak from 'keycloak-connect';
 export class Provider extends IAM<Strategy.SESSION, Configurations> {
 	public readonly strategy: Strategy.SESSION;
 
-	protected backend: InstanceType<typeof Keycloak>;
+	protected _backend: InstanceType<typeof Keycloak>;
 
 	protected roleBasedHandler(specs: string[]): RequestHandler {
-		return this.backend.protect((token) =>
+		return this._backend.protect((token) =>
 			specs.some((it) => token.hasRole(it))
 		);
 	}
 
 	protected resourceBasedHandler(specs: string[]): RequestHandler {
-		return this.backend.enforcer(specs);
+		return this._backend.enforcer(specs);
 	}
 
 	public constructor(
@@ -29,7 +29,7 @@ export class Provider extends IAM<Strategy.SESSION, Configurations> {
 	) {
 		super(config);
 		const { url, realm, clientId, ...options } = this.config;
-		this.backend = new Keycloak(options, {
+		this._backend = new Keycloak(options, {
 			'confidential-port': 0,
 			'ssl-required': 'external',
 			'auth-server-url': url,
@@ -42,7 +42,7 @@ export class Provider extends IAM<Strategy.SESSION, Configurations> {
 		admin?: string;
 		logout?: string;
 	}) {
-		return this.backend.middleware(options) as T;
+		return this._backend.middleware(options) as T;
 	}
 
 	public auth(options?: AuthOptions): RequestHandler {
@@ -61,6 +61,6 @@ export class Provider extends IAM<Strategy.SESSION, Configurations> {
 			}
 		}
 
-		return this.backend.protect();
+		return this._backend.protect();
 	}
 }

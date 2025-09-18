@@ -18,7 +18,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 
 	protected issuer: string;
 
-	protected jwks: ReturnType<typeof createRemoteJWKSet>;
+	protected _jwks: ReturnType<typeof createRemoteJWKSet>;
 
 	protected getAuthorization(req: Request) {
 		const headers = req?.headers || {};
@@ -107,7 +107,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 		const url = new URL(`${issuer}/protocol/openid-connect/certs`);
 
 		this.issuer = issuer;
-		this.jwks = createRemoteJWKSet(url, options);
+		this._jwks = createRemoteJWKSet(url, options);
 
 		return [] as T;
 	}
@@ -124,7 +124,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 			try {
 				const { payload } = await jwtVerify<Token>(
 					this.getAuthorization(req),
-					this.jwks,
+					this._jwks,
 					{ issuer: this.issuer }
 				);
 

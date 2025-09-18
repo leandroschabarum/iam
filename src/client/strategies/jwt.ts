@@ -7,20 +7,20 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 
 	protected initialized: boolean = false;
 
-	protected backend: Keycloak;
+	protected _backend: Keycloak;
 
 	public get token(): Token {
 		return {
-			...this.backend?.tokenParsed,
+			...this._backend?.tokenParsed,
 			toString: async () => {
 				await this.refresh();
-				return this.backend?.token || '';
+				return this._backend?.token || '';
 			},
 			then: async (resolve, reject) => {
 				try {
 					await this.refresh();
 
-					const parsed = { ...this.backend?.tokenParsed };
+					const parsed = { ...this._backend?.tokenParsed };
 
 					return resolve ? resolve(parsed) : parsed;
 				} catch (e) {
@@ -33,25 +33,27 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 	}
 
 	protected async refresh() {
-		if (!this.backend.isTokenExpired(this.config.tokenMinValidity)) return;
+		if (!this.initialized || !this._backend?.authenticated) return;
 
-		await this.backend.updateToken(this.config.tokenMinValidity);
+		if (!this._backend.isTokenExpired(this.config.tokenMinValidity)) return;
+
+		await this._backend.updateToken(this.config.tokenMinValidity);
 	}
 
 	public constructor(config: Configuration<Strategy.JWT, Configurations>) {
 		super(config);
-		this.backend = new Keycloak(this.config);
+		this._backend = new Keycloak(this.config);
 	}
 
 	public initialize<T = Promise<boolean>>(options?: KeycloakInitOptions) {
 		if (!this.initialized) {
 			this.initialized = true;
-			return this.backend.init({
+			return this._backend.init({
 				onLoad: 'login-required',
 				...options
 			}) as T;
 		}
 
-		return Promise.resolve<boolean>(this.initialized) as T;
+		return Promise.resolve<boolean>(this._backend?.authenticated) as T;
 	}
 }
