@@ -141,20 +141,18 @@ import React, { useState, useEffect } from 'react';
 import iam from './iam';
 
 export default function App() {
-    const [token, setToken] = useState('');
+    const [allowed, setAllowed] = useState(false);
 
     useEffect(() => {
-        iam.initialize().then(() => {
-            setToken(iam.token.toString());
-        });
+        iam.initialize().then(setAllowed);
     }, []);
 
-    if (!token) return <div>Loading...</div>;
+    if (!allowed) return <div>Loading...</div>;
 
     /**
-     * When making requests for the backend,
-     * add the token `Bearer ${token}` to the
-     * 'Authorization' headers of your request.
+     * When making requests for the backend, add the
+     * token `Bearer ${await iam.token.toString()}` to
+     * the 'Authorization' headers of your request.
      */
     return <div>Authenticated</div>;
 }

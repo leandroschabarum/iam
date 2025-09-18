@@ -1,8 +1,9 @@
 import {
+	AuthLevel,
 	AuthOptions,
 	Configurations,
 	IAM,
-	JWTDecoded,
+	Token,
 	NextFunction,
 	Request,
 	RequestHandler,
@@ -30,42 +31,73 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 		return token;
 	}
 
-	protected validateAuthorizedParty(decoded: JWTDecoded) {
+	protected getParties(decoded: Token): string[] {
 		const { aud, azp } = decoded || {};
+		const parties: string[] = [];
 
 		if (Array.isArray(aud)) {
-			if (!azp) {
-				throw new Error('Missing azp claim while aud is an array');
-			}
-
-			if (!aud.includes(azp)) {
-				throw new Error('Missing azp claim in the aud entries');
-			}
-
-			if (!aud.includes(this.config.clientId)) {
-				throw new Error(`Unauthorized audience claim`);
-			}
+			parties.push(azp!, ...aud);
 		} else {
-			if (azp !== this.config.clientId && aud !== this.config.clientId) {
-				throw new Error(`Unauthorized audience claim`);
+			parties.push(azp!, aud!);
+		}
+
+		return parties.filter(Boolean);
+	}
+
+	protected getPermissionsValidator(
+		level?: AuthLevel
+	): (specs: string[], decoded: Token) => boolean {
+		switch (level) {
+			case AuthLevel.ROLE: {
+				return this.hasRole.bind(this);
+			}
+			case AuthLevel.RESOURCE: {
+				return this.hasResource.bind(this);
+			}
+			default: {
+				return () => true;
 			}
 		}
 	}
 
-	protected role(specs: string[], decoded: JWTDecoded): boolean {
-		const roles = decoded.realm_access?.roles || [];
+	protected isAuthorized(decoded: Token, checkAllParties = false): boolean {
+		const parties = this.getParties(decoded);
 
-		return specs.some((it) => roles.includes(it));
+		if (!decoded?.azp) {
+			checkAllParties = true;
+		}
+
+		if (checkAllParties) {
+			return parties.filter(Boolean).includes(this.config.clientId);
+		}
+
+		return parties.filter(Boolean).shift() === this.config.clientId;
 	}
 
-	protected resource(specs: string[], decoded: JWTDecoded): boolean {
-		const audience =
-			(!Array.isArray(decoded.aud) && decoded.aud) ||
-			decoded.azp ||
-			this.config.clientId;
-		const resources = decoded.resource_access?.[audience]?.roles || [];
+	protected hasRole(specs: string[], decoded: Token): boolean {
+		const roles = decoded.realm_access?.roles || [];
 
-		return specs.some((it) => resources.includes(it));
+		return specs.some((role) => roles.includes(role));
+	}
+
+	protected hasResource(specs: string[], decoded: Token): boolean {
+		const defaultScope = this.getParties(decoded).shift()!;
+		const scoped = (spec: string, separator = ':') => {
+			const parsed = spec.split(separator);
+
+			if (parsed.length === 1) {
+				parsed.unshift(defaultScope);
+			}
+
+			return [parsed[0], parsed.slice(1).join(separator)];
+		};
+
+		return specs.some((it) => {
+			const [scope, resource] = scoped(it);
+			const resources = decoded.resource_access?.[scope]?.roles || [];
+
+			return resources.includes(resource);
+		});
 	}
 
 	public initialize<T = Array<RequestHandler>>(
@@ -83,25 +115,27 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 	public auth(options?: AuthOptions): RequestHandler {
 		const { level, permissions } = options || {};
 
+		const isPermitted = this.getPermissionsValidator(level);
 		const specs = (Array.isArray(permissions) ? permissions : []).filter(
 			Boolean
 		);
-		const validator = (level && this[level]?.bind(this)) || (() => true);
 
 		return async (req: Request, res: Response, next: NextFunction) => {
 			try {
-				const { payload } = await jwtVerify<JWTDecoded>(
+				const { payload } = await jwtVerify<Token>(
 					this.getAuthorization(req),
 					this.jwks,
 					{ issuer: this.issuer }
 				);
 
-				this.validateAuthorizedParty(payload);
+				if (!this.isAuthorized(payload)) {
+					res.writeHead(403).end(`Forbidden: unauthorized party`);
+					return;
+				}
 
-				if (!validator?.(specs, payload)) {
-					res.writeHead(403).end(
-						`Forbidden: missing ${level} permission`
-					);
+				if (!isPermitted(specs, payload)) {
+					res.writeHead(403).end(`Forbidden: missing permissions`);
+					return;
 				}
 
 				Object.assign(req, { user: payload });

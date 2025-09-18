@@ -5,7 +5,7 @@ export enum Strategy {
 
 export type ConfigurationOptions = {
 	strategy: Strategy;
-	config: Record<keyof any, any>;
+	config: { url: string; realm: string; clientId: string };
 };
 
 export type Configuration<

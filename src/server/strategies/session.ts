@@ -14,13 +14,13 @@ export class Provider extends IAM<Strategy.SESSION, Configurations> {
 
 	protected backend: InstanceType<typeof Keycloak>;
 
-	protected role(specs: string[]): RequestHandler {
+	protected roleBasedHandler(specs: string[]): RequestHandler {
 		return this.backend.protect((token) =>
 			specs.some((it) => token.hasRole(it))
 		);
 	}
 
-	protected resource(specs: string[]): RequestHandler {
+	protected resourceBasedHandler(specs: string[]): RequestHandler {
 		return this.backend.enforcer(specs);
 	}
 
@@ -54,10 +54,10 @@ export class Provider extends IAM<Strategy.SESSION, Configurations> {
 
 		switch (level) {
 			case AuthLevel.ROLE: {
-				return this.role(specs);
+				return this.roleBasedHandler(specs);
 			}
 			case AuthLevel.RESOURCE: {
-				return this.resource(specs);
+				return this.resourceBasedHandler(specs);
 			}
 		}
 

@@ -17,7 +17,7 @@ export type RequestHandler = (
 	next: NextFunction
 ) => void | Promise<void>;
 
-export interface JWTDecoded extends JWTPayload {
+export interface Token extends JWTPayload {
 	azp?: string;
 	realm_access?: { roles: string[] };
 	resource_access?: { [clientId: string]: { roles: string[] } };
