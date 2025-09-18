@@ -56,4 +56,12 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 
 		return Promise.resolve<boolean>(this._backend?.authenticated) as T;
 	}
+
+	public get login() {
+		return this._backend.login.bind(this._backend);
+	}
+
+	public get logout() {
+		return this._backend.logout.bind(this._backend);
+	}
 }
