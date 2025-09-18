@@ -45,7 +45,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 	}
 
 	protected getPermissionsValidator(
-		level?: AuthLevel
+		level?: string
 	): (specs: string[], decoded: Token) => boolean {
 		switch (level) {
 			case AuthLevel.ROLE: {

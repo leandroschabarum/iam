@@ -28,7 +28,7 @@ export enum AuthLevel {
 	RESOURCE = 'resource'
 }
 
-export type AuthOptions = { level: AuthLevel; permissions: string[] };
+export type AuthOptions = { level: string; permissions: string[] };
 
 export type Configurations =
 	| { strategy: Strategy.SESSION; config: SessionConfig }
