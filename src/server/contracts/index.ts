@@ -1,5 +1,5 @@
 import { Strategy } from '../../shared';
-import { JWTPayload } from 'jose';
+import { type JWTPayload } from '../../lib';
 import { type KeycloakOptions } from 'keycloak-connect';
 import { type IncomingMessage, type ServerResponse } from 'http';
 

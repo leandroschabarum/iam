@@ -45,7 +45,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 		this._backend = new Keycloak(this.config);
 	}
 
-	public initialize<T = Promise<boolean>>(options?: KeycloakInitOptions) {
+	public async initialize<T = boolean>(options?: KeycloakInitOptions) {
 		if (!this.initialized) {
 			this.initialized = true;
 			return this._backend.init({
@@ -54,7 +54,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 			}) as T;
 		}
 
-		return Promise.resolve<boolean>(this._backend?.authenticated) as T;
+		return Promise.resolve<T>(this._backend?.authenticated);
 	}
 
 	public get login() {

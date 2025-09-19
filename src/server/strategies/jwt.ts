@@ -10,7 +10,7 @@ import {
 	Response,
 	Strategy
 } from '../contracts';
-import { createRemoteJWKSet, jwtVerify, RemoteJWKSetOptions } from 'jose';
+import { jose, type RemoteJWKSet, type RemoteJWKSetOptions } from '../../lib';
 import { URL } from 'url';
 
 export class Provider extends IAM<Strategy.JWT, Configurations> {
@@ -18,7 +18,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 
 	protected issuer: string;
 
-	protected _jwks: ReturnType<typeof createRemoteJWKSet>;
+	protected _jwks: RemoteJWKSet;
 
 	protected getAuthorization(req: Request) {
 		const headers = req?.headers || {};
@@ -100,9 +100,10 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 		});
 	}
 
-	public initialize<T = Array<RequestHandler>>(
+	public async initialize<T = Array<RequestHandler>>(
 		options?: RemoteJWKSetOptions
 	) {
+		const { createRemoteJWKSet } = await jose();
 		const issuer = `${this.config.url}/realms/${this.config.realm}`;
 		const url = new URL(`${issuer}/protocol/openid-connect/certs`);
 
@@ -122,6 +123,7 @@ export class Provider extends IAM<Strategy.JWT, Configurations> {
 
 		return async (req: Request, res: Response, next: NextFunction) => {
 			try {
+				const { jwtVerify } = await jose();
 				const { payload } = await jwtVerify<Token>(
 					this.getAuthorization(req),
 					this._jwks,

@@ -1,6 +1,6 @@
 {
 	"name": "@lndr/iam",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Identity and access management abstraction for applications.",
 	"type": "module",
 	"author": "Leandro Schabarum <leandroschabarum.98@gmail.com>",

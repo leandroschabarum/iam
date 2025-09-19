@@ -52,8 +52,6 @@ const iam = new JwtProvider({
     clientId: 'my-client'
 });
 
-iam.initialize();
-
 export default iam;
 ```
 
@@ -64,10 +62,12 @@ Then you can use it in your backend as follows:
 import express from 'express';
 import iam from './iam';
 
-const app = express();
+iam.initialize().then(() => {
+    const app = express();
 
-app.get('/protected', iam.auth(), (req, res) => {
-    // This route is now protected
+    app.get('/protected', iam.auth(), (req, res) => {
+        // This route is now protected
+    });
 });
 ```
 

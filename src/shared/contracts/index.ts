@@ -49,5 +49,5 @@ export abstract class IAM<
 		globalScope[IAM_KEY] = this;
 	}
 
-	public abstract initialize<T>(): T;
+	public abstract initialize<T>(): T | Promise<T>;
 }
